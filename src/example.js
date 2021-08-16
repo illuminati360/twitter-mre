@@ -1,4 +1,3 @@
-const https = require('https');
 const request = require('request');
 const util = require('util');
 
@@ -9,8 +8,8 @@ const consumer_key = ''; // Add your API key here
 const consumer_secret = ''; // Add your API secret key here
 
 const bearerTokenURL = new URL('https://api.twitter.com/oauth2/token');
-const streamURL = new URL('https://api.twitter.com/labs/1/tweets/stream/filter');
-const rulesURL = new URL('https://api.twitter.com/labs/1/tweets/stream/filter/rules');
+const streamURL = new URL('https://api.twitter.com/2/tweets/search/stream');
+const rulesURL = new URL('https://api.twitter.com/2/tweets/search/stream/rules');
 
 async function sleep(delay) {
   return new Promise((resolve) => 
@@ -110,7 +109,7 @@ async function setRules(rules, token) {
 function streamConnect(token) {
   // Listen to the stream
   const config = {
-    url: 'https://api.twitter.com/labs/1/tweets/stream/filter?format=compact',
+    url: streamURL,
     auth: {
       bearer: token,
     },
@@ -134,7 +133,7 @@ function streamConnect(token) {
     if (error.code === 'ESOCKETTIMEDOUT') {
       stream.emit('timeout');
     }
-  });
+  })
 
   return stream;
 }
@@ -150,13 +149,16 @@ function streamConnect(token) {
 
   try {
     // Exchange your credentials for a Bearer token
+    console.log('Getting Bearer Token ... ');
     token = await bearerToken({consumer_key, consumer_secret});
+    console.log(token);
   } catch (e) {
     console.error(`Could not generate a Bearer token. Please check that your credentials are correct and that the Filtered Stream preview is enabled in your Labs dashboard. (${e})`);
     process.exit(-1);
   }
 
   try {
+    console.log('Setting Filters');
     // Gets the complete list of rules currently applied to the stream
     currentRules = await getAllRules(token);
     
@@ -165,6 +167,7 @@ function streamConnect(token) {
 
     // // Add rules to the stream. Comment this line if you want to keep your existing rules.
     await setRules(rules, token);
+    console.log('Filters Set')
   } catch (e) {
     console.error(e);
     process.exit(-1);
@@ -176,7 +179,9 @@ function streamConnect(token) {
   // will increase if the client cannot reconnect to the stream.
   const connect = () => {
     try {
+      console.log('Connecting to stream ...')
       stream = streamConnect(token);
+      console.log('Connected')
       stream.on('timeout', async () => {
         // Reconnect on error
         console.warn('A connection error occurred. Reconnecting…');
